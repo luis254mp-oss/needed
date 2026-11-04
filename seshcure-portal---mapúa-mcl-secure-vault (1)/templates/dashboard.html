@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeshCure Dashboard — Mapúa MCL Vault</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between gap-8">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-rose-700 flex items-center justify-center font-bold text-white text-xs tracking-wider">
+        MCL
+      </div>
+      <div>
+        <a href="/dashboard" class="text-sm font-bold text-white tracking-tight">SeshCure Portal</a>
+        <div class="text-[11px] text-slate-400">Mapúa Malayan Colleges Laguna Vault</div>
+      </div>
+    </div>
+
+    <!-- Right Zone -->
+    <div class="flex items-center gap-4 text-xs">
+      <div class="text-right hidden sm:block">
+        <div class="font-medium text-slate-200">{{ user.email }}</div>
+        <div class="text-[11px] text-slate-400 font-mono">Role: {{ user.role }}</div>
+      </div>
+      {% if user.role == 'admin' %}
+      <a href="/admin" class="py-1.5 px-3 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded text-xs hover:bg-amber-500/20 transition">
+        Admin Console
+      </a>
+      {% endif %}
+      <a href="/logout" class="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition">
+        Sign Out
+      </a>
+    </div>
+  </header>
+
+  <!-- Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="p-4 rounded-lg text-xs leading-relaxed {% if category == 'error' %}bg-rose-950/80 border border-rose-800 text-rose-200{% elif category == 'warning' %}bg-amber-950/80 border border-amber-800 text-amber-200{% else %}bg-emerald-950/80 border border-emerald-800 text-emerald-200{% endif %}">
+            <span class="font-semibold block mb-0.5">{{ category|capitalize }}:</span>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Top Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="text-xs text-slate-400">Stored Files</div>
+        <div class="text-2xl font-bold text-white mt-1 font-mono tabular-nums">{{ files|length }}</div>
+        <div class="text-[11px] text-slate-500 mt-1">Encrypted on disk with AES-256-GCM</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="text-xs text-slate-400">Active Shared Links</div>
+        <div class="text-2xl font-bold text-white mt-1 font-mono tabular-nums">{{ shared_links|length }}</div>
+        <div class="text-[11px] text-slate-500 mt-1">2-hour security expiration window</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="text-xs text-slate-400">Security Gate</div>
+        <div class="text-xs font-semibold text-emerald-400 mt-2 font-mono flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+          @mcl.edu.ph Authenticated
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">SHA-256 cryptographic integrity active</div>
+      </div>
+    </div>
+
+    <!-- Upload Box & Versioning Card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+        <div>
+          <h2 class="text-base font-semibold text-slate-100">Encrypted File Upload</h2>
+          <p class="text-xs text-slate-400">Payloads are encrypted in-transit and on-disk using AES-256 before storage.</p>
+        </div>
+        <span class="text-xs font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+          Max: 100 MB
+        </span>
+      </div>
+
+      <form action="/upload" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <!-- Drag & Drop Zone -->
+        <div class="border-2 border-dashed border-slate-700 hover:border-rose-600 rounded-lg p-6 sm:p-8 text-center transition cursor-pointer bg-slate-950/50" onclick="document.getElementById('fileInput').click()">
+          <input type="file" name="file" id="fileInput" required class="hidden" onchange="updateFileName(this)">
+          <div class="text-slate-400 text-sm">
+            <span class="font-semibold text-rose-500">Click to browse</span> or drag and drop your campus files here
+          </div>
+          <p class="text-xs text-slate-500 mt-1" id="fileSelectedDisplay">
+            Supports PDF, DOCX, XLSX, Images, ZIP archives, and Lecture Notes
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Target Folder</label>
+            <input type="text" name="folder" placeholder="Research / Thesis / Syllabi" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Version Log / Commit Note</label>
+            <input type="text" name="change_note" placeholder="e.g. Chapter 1 review comments" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500">
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full py-2 px-4 bg-rose-700 hover:bg-rose-600 text-white font-medium text-xs rounded transition shadow-sm">
+              Encrypt & Store Payload
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Encrypted Files Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-semibold text-slate-100">Protected Campus Documents</h2>
+          <p class="text-xs text-slate-400">All files are protected with AES-256 and verified against SHA-256 checksums.</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 font-medium">
+              <th class="py-3 px-4">Filename</th>
+              <th class="py-3 px-4">Folder</th>
+              <th class="py-3 px-4">Version</th>
+              <th class="py-3 px-4">Size</th>
+              <th class="py-3 px-4">SHA-256 Integrity</th>
+              <th class="py-3 px-4">Date Uploaded</th>
+              <th class="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300">
+            {% if files %}
+              {% for f in files %}
+              <tr class="hover:bg-slate-800/40 transition">
+                <td class="py-3 px-4 font-medium text-slate-100 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-[10px] text-slate-300 font-mono">
+                    {% if 'pdf' in f.mime_type %}PDF{% elif 'image' in f.mime_type %}IMG{% else %}DOC{% endif %}
+                  </span>
+                  <span>{{ f.original_name }}</span>
+                </td>
+                <td class="py-3 px-4 text-slate-400">{{ f.folder }}</td>
+                <td class="py-3 px-4 font-mono">v{{ f.version }}</td>
+                <td class="py-3 px-4 font-mono tabular-nums">{{ (f.file_size / 1024)|round(1) }} KB</td>
+                <td class="py-3 px-4 font-mono text-[11px] text-slate-400" title="{{ f.sha256_hash }}">
+                  {{ f.sha256_hash[:12] }}...{{ f.sha256_hash[-6:] }}
+                </td>
+                <td class="py-3 px-4 text-slate-400 tabular-nums">{{ f.created_at }}</td>
+                <td class="py-3 px-4 text-right space-x-2">
+                  <a href="/download/{{ f.id }}" class="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] transition inline-block">
+                    Download
+                  </a>
+                  <button type="button" onclick="openShareModal('{{ f.id }}', '{{ f.original_name }}')" class="py-1 px-2.5 bg-rose-900/40 hover:bg-rose-900/70 border border-rose-800 text-rose-300 rounded text-[11px] transition inline-block">
+                    Share Link
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-500">
+                  No encrypted files stored in your vault yet. Upload your first document above.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Active Shared Links -->
+    {% if shared_links %}
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div class="p-5 border-b border-slate-800">
+        <h2 class="text-base font-semibold text-slate-100">Active Tokenized Links</h2>
+        <p class="text-xs text-slate-400">External users will be forced to authenticate via Mapúa MCL credentials.</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 font-medium">
+              <th class="py-3 px-4">File Name</th>
+              <th class="py-3 px-4">Share Token URL</th>
+              <th class="py-3 px-4">Expires At</th>
+              <th class="py-3 px-4">Downloads</th>
+              <th class="py-3 px-4">PIN Protection</th>
+              <th class="py-3 px-4 text-right">Copy</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300">
+            {% for link in shared_links %}
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-medium text-slate-200">{{ link.original_name }}</td>
+              <td class="py-3 px-4 font-mono text-slate-400">/s/{{ link.token }}</td>
+              <td class="py-3 px-4 font-mono tabular-nums text-slate-400">{{ link.expires_at }}</td>
+              <td class="py-3 px-4 font-mono tabular-nums">{{ link.download_count }}</td>
+              <td class="py-3 px-4 font-mono">
+                {% if link.pin_hash %}
+                  <span class="text-amber-400 font-medium">Enabled (PIN Required)</span>
+                {% else %}
+                  <span class="text-slate-500">None (Domain Only)</span>
+                {% endif %}
+              </td>
+              <td class="py-3 px-4 text-right">
+                <button onclick="copyShareUrl('{{ link.token }}')" class="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] transition">
+                  Copy Link
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <!-- Share Modal -->
+  <div id="shareModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-sm font-semibold text-slate-100">Generate Protected Share Link</h3>
+        <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-200 text-sm">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">
+        Sharing file: <span id="modalFileName" class="font-medium text-slate-200"></span>
+      </p>
+
+      <form id="shareForm" method="POST" action="" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Expiration Period</label>
+          <select name="expiry_hours" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+            <option value="2">2 Hours (Recommended security standard)</option>
+            <option value="6">6 Hours</option>
+            <option value="12">12 Hours</option>
+            <option value="24">24 Hours</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Optional Access PIN</label>
+          <input type="password" name="access_pin" placeholder="Leave blank for domain-auth only" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500">
+          <p class="text-[11px] text-slate-500 mt-1">Recipients must still log in with their @mcl.edu.ph account.</p>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeShareModal()" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded transition">
+            Cancel
+          </button>
+          <button type="submit" class="py-2 px-4 bg-rose-700 hover:bg-rose-600 text-white font-medium text-xs rounded transition">
+            Generate Tokenized Link
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function updateFileName(input) {
+      const display = document.getElementById('fileSelectedDisplay');
+      if (input.files && input.files[0]) {
+        display.textContent = 'Selected: ' + input.files[0].name + ' (' + (input.files[0].size / 1024).toFixed(1) + ' KB)';
+        display.className = 'text-xs text-rose-400 font-medium mt-1';
+      }
+    }
+
+    function openShareModal(fileId, fileName) {
+      document.getElementById('modalFileName').textContent = fileName;
+      document.getElementById('shareForm').action = '/share/' + fileId;
+      document.getElementById('shareModal').classList.remove('hidden');
+    }
+
+    function closeShareModal() {
+      document.getElementById('shareModal').classList.add('hidden');
+    }
+
+    function copyShareUrl(token) {
+      const fullUrl = window.location.origin + '/s/' + token;
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        alert('Copied secure share link to clipboard:\n' + fullUrl);
+      });
+    }
+  </script>
+</body>
+</html>

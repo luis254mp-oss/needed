@@ -1,0 +1,8 @@
+{
+  "name": "SeshCure Portal - Mapúa MCL Secure Vault",
+  "description": "Secure campus file management, AES-256 end-to-end encryption, time-limited link sharing, and session location monitoring for Mapúa Malayan Colleges Laguna.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

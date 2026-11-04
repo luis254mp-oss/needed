@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeshCure Portal — Mapúa MCL Authentication</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between antialiased selection:bg-rose-900 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-rose-700 flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-sm">
+        MCL
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-slate-100 tracking-tight">SeshCure Portal</h1>
+        <p class="text-xs text-slate-400">Mapúa Malayan Colleges Laguna · Secure Campus Vault</p>
+      </div>
+    </div>
+    <div class="text-xs text-slate-400 hidden sm:block font-mono">
+      AES-256-GCM · JWT · SHA-256
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 flex items-center justify-center p-4 sm:p-6 my-8">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-6 sm:p-8 shadow-2xl">
+      
+      <!-- Campus Gate Notice -->
+      <div class="mb-6 pb-6 border-b border-slate-800 text-center">
+        <h2 class="text-xl font-bold text-slate-100 tracking-tight">Campus Domain Gate</h2>
+        <p class="text-xs text-slate-400 mt-1">
+          Restricted access for Mapúa MCL faculty, staff, and enrolled students only.
+        </p>
+      </div>
+
+      <!-- Flash Messages / Alert Banners -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="mb-5 p-3.5 rounded-lg text-xs leading-relaxed {% if category == 'error' %}bg-rose-950/80 border border-rose-800 text-rose-200{% elif category == 'warning' %}bg-amber-950/80 border border-amber-800 text-amber-200{% else %}bg-emerald-950/80 border border-emerald-800 text-emerald-200{% endif %}">
+              <span class="font-semibold block mb-0.5">
+                {% if category == 'error' %}Access Denied / Security Notice{% elif category == 'warning' %}Notice{% else %}Success{% endif %}
+              </span>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Tab Switcher -->
+      <div class="flex border-b border-slate-800 mb-6" id="authTabs">
+        <button type="button" onclick="switchAuthTab('login')" id="tabLogin" class="flex-1 pb-3 text-xs font-semibold text-rose-500 border-b-2 border-rose-500 transition-colors">
+          Sign In
+        </button>
+        <button type="button" onclick="switchAuthTab('register')" id="tabRegister" class="flex-1 pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors">
+          Register New Account
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="formLogin" method="POST" action="/login" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5" for="loginEmail">
+            Official Campus Email
+          </label>
+          <input 
+            type="email" 
+            name="email" 
+            id="loginEmail" 
+            required
+            placeholder="jdelacruz@mcl.edu.ph"
+            value="{{ email_val or '' }}"
+            class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition"
+          >
+          <p class="text-[11px] text-slate-500 mt-1">Students: <span class="font-mono text-slate-400">@live.mcl.edu.ph</span> · Staff: <span class="font-mono text-slate-400">@mcl.edu.ph</span></p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5" for="loginPassword">
+            Password
+          </label>
+          <input 
+            type="password" 
+            name="password" 
+            id="loginPassword" 
+            required
+            placeholder="••••••••••••"
+            class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition"
+          >
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2.5 px-4 bg-rose-700 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition-colors shadow-sm mt-2"
+        >
+          Authenticate Session
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="formRegister" method="POST" action="/register" class="space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5" for="regName">
+            Full Name
+          </label>
+          <input 
+            type="text" 
+            name="full_name" 
+            id="regName" 
+            required
+            placeholder="Juan P. Dela Cruz"
+            class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5" for="regEmail">
+            Official Campus Email
+          </label>
+          <input 
+            type="email" 
+            name="email" 
+            id="regEmail" 
+            required
+            placeholder="jdelacruz@mcl.edu.ph"
+            class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition"
+          >
+          <p class="text-[11px] text-slate-500 mt-1">Personal emails (e.g. @gmail.com) are automatically blocked.</p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-medium text-slate-300" for="regPassword">
+              Create Standard Password
+            </label>
+            <button 
+              type="button" 
+              onclick="document.getElementById('regPassword').value = 'MCL_Secure' + new Date().getFullYear() + '!';"
+              class="text-[11px] text-rose-400 hover:text-rose-300 font-medium hover:underline"
+            >
+              Use Standard Password (e.g. MCL_Secure2026!)
+            </button>
+          </div>
+          <input 
+            type="password" 
+            name="password" 
+            id="regPassword" 
+            required
+            minlength="10"
+            placeholder="Min 10 chars with uppercase, number, symbol"
+            class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono transition"
+          >
+          <p class="text-[10px] text-slate-500 mt-1">Requires 10+ characters, uppercase, lowercase, number, and symbol.</p>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2.5 px-4 bg-rose-700 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition-colors shadow-sm mt-2"
+        >
+          Create Protected Account
+        </button>
+      </form>
+
+      <!-- Security Notice Footer -->
+      <div class="mt-6 pt-5 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+        <span>Campus Subnet Guard Active</span>
+        <span>Cabuyao, Laguna</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-500">
+    © Mapúa Malayan Colleges Laguna · Pulo-Diezmo Road, Cabuyao, Laguna, 4025 Philippines
+  </footer>
+
+  <script>
+    function switchAuthTab(mode) {
+      const loginForm = document.getElementById('formLogin');
+      const regForm = document.getElementById('formRegister');
+      const tabLogin = document.getElementById('tabLogin');
+      const tabRegister = document.getElementById('tabRegister');
+
+      if (mode === 'login') {
+        loginForm.classList.remove('hidden');
+        regForm.classList.add('hidden');
+        tabLogin.className = 'flex-1 pb-3 text-xs font-semibold text-rose-500 border-b-2 border-rose-500 transition-colors';
+        tabRegister.className = 'flex-1 pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors';
+      } else {
+        loginForm.classList.add('hidden');
+        regForm.classList.remove('hidden');
+        tabRegister.className = 'flex-1 pb-3 text-xs font-semibold text-rose-500 border-b-2 border-rose-500 transition-colors';
+        tabLogin.className = 'flex-1 pb-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors';
+      }
+    }
+  </script>
+</body>
+</html>
